@@ -5,11 +5,11 @@ import re
 from datetime import datetime, timedelta
 
 class ETL:
-    def __init__(self):
-        self.url_core = 'https://www.olx.pl'
+    def __init__(self, url_core='https://www.olx.pl'):
+        self.url_core = url_core
     
     def scrap_main_pages(self, max_main_page=25, delay=4):
-        url_main = 'https://www.olx.pl/d/nieruchomosci/mieszkania/wynajem/?search%5Border%5D=created_at%3Adesc'
+        url_main = self.url_core + '/d/nieruchomosci/mieszkania/wynajem/?search%5Border%5D=created_at%3Adesc'
         url_filter_rooms = '&search%5Bfilter_enum_rooms%5D%5B0%5D='
         url_filter_pages = '&page='
         list_number_of_rooms = ['one', 'two', 'three', 'four']
@@ -117,3 +117,53 @@ class ETL:
                 pass
         
         return df
+
+    def scrap_details_olx(self, df, column_name='url'):
+        df = df
+
+        i = 0
+        while i < len(df.index):
+            try:
+                ad_link = df.at[i, column_name]
+
+                if '/d/oferta/' in ad_link:
+                    result = requests.get(f'{self.url_core}{ad_link}') # Ask for url access
+                    content = result.text # Get HTML text page
+                    soup = BeautifulSoup(content, 'lxml') # Convert to soup format for further proces
+
+                    try:
+                        list_details = [element.get_text() for element in soup.find_all('p', class_ = 'css-xl6fe0-Text eu5v0x0')]
+
+                        df.at[i, 'typ_ogloszenia'] = list_details[0]
+
+                        r = re.compile('poziom', re.IGNORECASE)
+                        pietro = list(filter(r.search, list_details))[0]
+                        df.at[i, 'pietro'] = pietro
+
+                        r = re.compile('umeblowane', re.IGNORECASE)
+                        umeblowanie = list(filter(r.search, list_details))[0]             
+                        df.at[i, 'umeblowanie'] = umeblowanie
+
+                        r = re.compile('rodzaj zabudowy', re.IGNORECASE)
+                        rodzaj_zabudowy = list(filter(r.search, list_details))[0]
+                        df.at[i, 'rodzaj_zabudowy'] = rodzaj_zabudowy
+
+                        r = re.compile('czynsz', re.IGNORECASE)
+                        oplaty_dodatkowe = list(filter(r.search, list_details))[0]
+                        df.at[i, 'oplaty_dodatkowe'] = oplaty_dodatkowe
+                    except:
+                        pass
+
+                    i += 1
+                
+                else:
+                    i += 1
+                    pass
+
+            except:       
+                i += 1
+                continue
+
+        return df
+
+df = ETL().scrap_main_pages()
