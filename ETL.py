@@ -165,5 +165,3 @@ class ETL:
                 continue
 
         return df
-
-df = ETL().scrap_main_pages()
