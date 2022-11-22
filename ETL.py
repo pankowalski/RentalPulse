@@ -4,6 +4,16 @@ import pandas as pd
 import re
 from datetime import datetime, timedelta
 
+from selenium import webdriver
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.common.action_chains import ActionChains
+from webdriver_manager.chrome import ChromeDriverManager
+from time import sleep
+
 class ETL:
     def __init__(self, url_core='https://www.olx.pl'):
         self.url_core = url_core
@@ -118,8 +128,8 @@ class ETL:
         
         return df
 
-    def scrap_details_olx(self, df, column_name='url'):
-        df = df
+    def scrap_details_olx(self, df_input, column_name='url'):
+        df = df_input
 
         i = 0
         while i < len(df.index):
@@ -127,9 +137,9 @@ class ETL:
                 ad_link = df.at[i, column_name]
 
                 if '/d/oferta/' in ad_link:
-                    result = requests.get(f'{self.url_core}{ad_link}') # Ask for url access
-                    content = result.text # Get HTML text page
-                    soup = BeautifulSoup(content, 'lxml') # Convert to soup format for further proces
+                    result = requests.get(f'{self.url_core}{ad_link}')
+                    content = result.text
+                    soup = BeautifulSoup(content, 'lxml')
 
                     try:
                         list_details = [element.get_text() for element in soup.find_all('p', class_ = 'css-xl6fe0-Text eu5v0x0')]
@@ -164,4 +174,66 @@ class ETL:
                 i += 1
                 continue
 
+        return df
+    
+    def scrap_details_otodom(self, df_input, column_name='url'):
+        options = Options()
+        options.add_argument('--disable-notifications')
+        options.add_argument('--headless') # Best not to use, not to have IP blocked by website but I don't have better solution for now
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-blink-features=AutomationControlled')
+
+        driver = webdriver.Chrome(ChromeDriverManager().install(), options = options)
+
+        df = df_input
+
+        i = 0
+        while i < len(df.index):
+            try:
+                ad_link = df.at[i, column_name]
+
+                if 'otodom' in ad_link:
+                    driver.get(ad_link)
+                    sleep(5)
+                    
+                    try:
+                        for element in driver.find_elements(By.CLASS_NAME, 'css-1ccovha.estckra9'):
+                            category = element.find_element(By.CLASS_NAME, 'css-1h52dri.estckra7').text
+                            
+                            if re.search('piętro', category, re.IGNORECASE):
+                                pietro = element.find_element(By.CLASS_NAME, 'css-1wi2w6s.estckra5').text
+                                df.at[i, 'pietro'] = pietro
+                            
+                            elif re.search('czynsz', category, re.IGNORECASE):
+                                oplaty_dodatkowe = element.find_element(By.CLASS_NAME, 'css-1wi2w6s.estckra5').text
+                                df.at[i, 'oplaty_dodatkowe'] = oplaty_dodatkowe
+                            
+                            elif re.search('rodzaj zabudowy', category, re.IGNORECASE):
+                                rodzaj_zabudowy = element.find_element(By.CLASS_NAME, 'css-1wi2w6s.estckra5').text
+                                df.at[i, 'rodzaj_zabudowy'] = rodzaj_zabudowy
+
+                        for element in driver.find_elements(By.CLASS_NAME, 'css-f45csg.estckra9'):
+                            category = element.find_element(By.CLASS_NAME, 'css-1h52dri.estckra7').text
+                            
+                            if re.search('typ ogłoszeniodawcy', category, re.IGNORECASE):
+                                typ_ogloszenia = element.find_element(By.CLASS_NAME, 'css-1wi2w6s.estckra5').text
+                                df.at[i, 'typ_ogloszenia'] = typ_ogloszenia
+                            
+                            elif re.search('wyposażenie', category, re.IGNORECASE):
+                                umeblowanie = element.find_element(By.CLASS_NAME, 'css-1wi2w6s.estckra5').text
+                                df.at[i, 'umeblowanie'] = umeblowanie
+                    except:
+                        pass
+                    
+                    i += 1
+                
+                else:
+                    i += 1
+                    pass
+
+            except:       
+                i += 1
+                continue
+
+        driver.quit()
         return df
