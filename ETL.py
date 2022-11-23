@@ -3,20 +3,16 @@ import requests
 import pandas as pd
 import re
 from datetime import datetime, timedelta
-
-from selenium import webdriver
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.common.action_chains import ActionChains
-from webdriver_manager.chrome import ChromeDriverManager
 from time import sleep
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
 
 class ETL:
     def __init__(self, url_core='https://www.olx.pl'):
         self.url_core = url_core
+        self.str_today_date = datetime.today().strftime('%Y-%m-%d')
     
     def scrap_main_pages(self, max_main_page=25, delay=4):
         url_main = self.url_core + '/d/nieruchomosci/mieszkania/wynajem/?search%5Border%5D=created_at%3Adesc'
@@ -32,7 +28,6 @@ class ETL:
         dict_template = {key: None for key in list_variables}
 
         df = pd.DataFrame()
-        str_today_date = datetime.today().strftime('%Y-%m-%d')
         hours_delay = datetime.now() - timedelta(hours = delay)
         str_hours_delay = hours_delay.strftime('%Y-%m-%d %H:%M:%S')
 
@@ -63,7 +58,7 @@ class ETL:
                             location_and_datestamp = ad.find('p', class_ = 'css-p6wsjo-Text eu5v0x0').text.strip()
                             r = re.split(' - ', location_and_datestamp)
                             datestamp = r[1]
-                            datestamp = str_today_date + ' ' + datestamp[-5:] + ':00'
+                            datestamp = self.str_today_date + ' ' + datestamp[-5:] + ':00'
 
                             if datestamp >= str_hours_delay:
 
@@ -147,20 +142,20 @@ class ETL:
                         df.at[i, 'typ_ogloszenia'] = list_details[0]
 
                         r = re.compile('poziom', re.IGNORECASE)
-                        pietro = list(filter(r.search, list_details))[0]
-                        df.at[i, 'pietro'] = pietro
+                        floor = list(filter(r.search, list_details))[0]
+                        df.at[i, 'pietro'] = floor
 
                         r = re.compile('umeblowane', re.IGNORECASE)
-                        umeblowanie = list(filter(r.search, list_details))[0]             
-                        df.at[i, 'umeblowanie'] = umeblowanie
+                        furniture = list(filter(r.search, list_details))[0]             
+                        df.at[i, 'umeblowanie'] = furniture
 
                         r = re.compile('rodzaj zabudowy', re.IGNORECASE)
-                        rodzaj_zabudowy = list(filter(r.search, list_details))[0]
-                        df.at[i, 'rodzaj_zabudowy'] = rodzaj_zabudowy
+                        building_type = list(filter(r.search, list_details))[0]
+                        df.at[i, 'rodzaj_zabudowy'] = building_type
 
                         r = re.compile('czynsz', re.IGNORECASE)
-                        oplaty_dodatkowe = list(filter(r.search, list_details))[0]
-                        df.at[i, 'oplaty_dodatkowe'] = oplaty_dodatkowe
+                        utilities = list(filter(r.search, list_details))[0]
+                        df.at[i, 'oplaty_dodatkowe'] = utilities
                     except:
                         pass
 
@@ -201,27 +196,27 @@ class ETL:
                             category = element.find_element(By.CLASS_NAME, 'css-1h52dri.estckra7').text
                             
                             if re.search('piętro', category, re.IGNORECASE):
-                                pietro = element.find_element(By.CLASS_NAME, 'css-1wi2w6s.estckra5').text
-                                df.at[i, 'pietro'] = pietro
+                                floor = element.find_element(By.CLASS_NAME, 'css-1wi2w6s.estckra5').text
+                                df.at[i, 'pietro'] = floor
                             
                             elif re.search('czynsz', category, re.IGNORECASE):
-                                oplaty_dodatkowe = element.find_element(By.CLASS_NAME, 'css-1wi2w6s.estckra5').text
-                                df.at[i, 'oplaty_dodatkowe'] = oplaty_dodatkowe
+                                utilities = element.find_element(By.CLASS_NAME, 'css-1wi2w6s.estckra5').text
+                                df.at[i, 'oplaty_dodatkowe'] = utilities
                             
                             elif re.search('rodzaj zabudowy', category, re.IGNORECASE):
-                                rodzaj_zabudowy = element.find_element(By.CLASS_NAME, 'css-1wi2w6s.estckra5').text
-                                df.at[i, 'rodzaj_zabudowy'] = rodzaj_zabudowy
+                                building_type = element.find_element(By.CLASS_NAME, 'css-1wi2w6s.estckra5').text
+                                df.at[i, 'rodzaj_zabudowy'] = building_type
 
                         for element in driver.find_elements(By.CLASS_NAME, 'css-f45csg.estckra9'):
                             category = element.find_element(By.CLASS_NAME, 'css-1h52dri.estckra7').text
                             
                             if re.search('typ ogłoszeniodawcy', category, re.IGNORECASE):
-                                typ_ogloszenia = element.find_element(By.CLASS_NAME, 'css-1wi2w6s.estckra5').text
-                                df.at[i, 'typ_ogloszenia'] = typ_ogloszenia
+                                ad_type = element.find_element(By.CLASS_NAME, 'css-1wi2w6s.estckra5').text
+                                df.at[i, 'typ_ogloszenia'] = ad_type
                             
                             elif re.search('wyposażenie', category, re.IGNORECASE):
-                                umeblowanie = element.find_element(By.CLASS_NAME, 'css-1wi2w6s.estckra5').text
-                                df.at[i, 'umeblowanie'] = umeblowanie
+                                furniture = element.find_element(By.CLASS_NAME, 'css-1wi2w6s.estckra5').text
+                                df.at[i, 'umeblowanie'] = furniture
                     except:
                         pass
                     
@@ -236,4 +231,115 @@ class ETL:
                 continue
 
         driver.quit()
+        return df
+
+    def transform_data(self, df_input):
+        df = df_input
+
+        try:
+            # Location and datestamp
+            df_split = df.lokalizacja_i_datestamp.str.split(pat = ' - ', n = 1, expand = True)
+            df_split.rename(columns = {0: 'lokalizacja', 1: 'datestamp'}, inplace = True)
+            df = pd.concat([df, df_split], axis = 1)
+        except:
+            pass
+
+        try:
+            # City and district
+            df_split = df.lokalizacja.str.split(pat = ',', expand = True)
+            df_split.rename(columns = {0: 'miasto', 1: 'dzielnica'}, inplace = True)
+            df = pd.concat([df, df_split], axis = 1)
+            df.miasto = df.miasto.str.strip()
+            df.dzielnica = df.dzielnica.str.strip()
+        except:
+            pass
+        
+        try:
+            # Cleaning up 'price' variable
+            df.cena = df.cena.replace({'\..*$': '', '\D': ''}, regex = True) # Remove (1) everything after comma, (2) remove everything what is not a digit
+            df.cena = df.cena.str.strip()
+            df.cena = df.cena.astype('float')
+        except:
+            pass
+
+        try:
+            # Cleaning up 'flat_area' variable
+            df.powierzchnia = df.powierzchnia.replace({' m²': '', ',': '.'}, regex = True)
+            df.powierzchnia = df.powierzchnia.str.strip()
+            df.powierzchnia = df.powierzchnia.astype('float')
+        except:
+            pass
+
+        try:
+            # Cleaning up 'floor' variable
+            df.pietro = df.pietro.replace({'/.': '', 'Poziom:': '', 'Parter': 0}, regex = True)
+            df.pietro = df.pietro.str.strip()
+        except:
+            pass
+        
+        try:
+            # Cleaning up 'furniture' variable
+            df.umeblowanie = df.umeblowanie.replace('Umeblowane:', '', regex = True)
+            df.umeblowanie = df.umeblowanie.str.strip()
+            df.loc[df.umeblowanie.str.len() > 3, 'umeblowanie'] = 'Tak'
+        except:
+            pass
+
+        try:
+            # Cleaning up 'building_type' variable
+            df.rodzaj_zabudowy = df.rodzaj_zabudowy.replace('Rodzaj zabudowy: ', '', regex = True)
+            df.rodzaj_zabudowy = df.rodzaj_zabudowy.str.capitalize()
+            df.rodzaj_zabudowy = df.rodzaj_zabudowy.str.strip()
+        except:
+            pass
+
+        try:
+            # Cleaning up 'utilities' variable
+            df.oplaty_dodatkowe = df.oplaty_dodatkowe.replace({'\D': ''}, regex = True)
+            df.oplaty_dodatkowe = df.oplaty_dodatkowe.str.strip()
+            df.oplaty_dodatkowe = df.oplaty_dodatkowe.astype('float')
+        except:
+            pass
+
+        try:
+            # Cleaning up 'datestamp' variable
+            df.datestamp = self.str_today_date + ' ' + df.datestamp.str[-5:] + ':00'
+        except:
+            pass
+
+        try:
+            # Drop temporary columns
+            df = df.drop(columns = ['lokalizacja_i_datestamp', 'lokalizacja'])
+        except:
+            pass
+
+        try:
+            # Cleaning up 'url' variable
+            df.loc[df.url.str.find('otodom') == -1, 'url'] = self.url_core + df.url
+        except:
+            pass
+
+        str_now = (datetime.now()).strftime('%Y-%m-%d %H:%M:%S')
+        df['update_datetime'] = str_now
+
+        try:
+            # Order variables
+            df = df[[
+                    'update_datetime',
+                    'datestamp',
+                    'tytul',
+                    'miasto',
+                    'dzielnica',
+                    'cena',
+                    'powierzchnia',
+                    'liczba_pokoi',
+                    'oplaty_dodatkowe',
+                    'pietro',
+                    'umeblowanie',
+                    'rodzaj_zabudowy',
+                    'url'
+                    ]]
+        except:
+            pass
+        
         return df
