@@ -8,12 +8,26 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
+from sqlalchemy import create_engine
 
 class ETL:
-    def __init__(self, url_core='https://www.olx.pl'):
+    def __init__(self, mysql_user, mysql_password, mysql_port, final_table_name, url_core='https://www.olx.pl'):
         self.url_core = url_core
         self.str_today_date = datetime.today().strftime('%Y-%m-%d')
+
+        self.user = mysql_user
+        self.password = mysql_password
+        self.mysql_port = mysql_port
+
+        self.engine = create_engine(f'mysql+mysqldb://{self.user}:{self.password}@{self.host}:{self.mysql_port}/{self.db_name}')
+        self.mysql_connection = self.engine.connect()
+        self.final_table_name = final_table_name
     
+    def close_db_connections(self):
+        # CLose mysql connection
+        self.mysql_connection.close()
+        self.engine.dispose()
+
     def scrap_main_pages(self, max_main_page=25, delay=4):
         url_main = self.url_core + '/d/nieruchomosci/mieszkania/wynajem/?search%5Border%5D=created_at%3Adesc'
         url_filter_rooms = '&search%5Bfilter_enum_rooms%5D%5B0%5D='
@@ -343,3 +357,9 @@ class ETL:
             pass
         
         return df
+    
+    def update_final_table(self, df_input):
+        df = df_input
+
+        # Load data to final table
+        df.to_sql(name = self.final_table_name, if_exists = 'append', index = False, con = self.mysql_connection)
