@@ -11,8 +11,8 @@ from webdriver_manager.chrome import ChromeDriverManager
 from sqlalchemy import create_engine
 
 class ETL:
-    def __init__(self, mysql_user, mysql_password, mysql_port, final_table_name, url_core='https://www.olx.pl'):
-        self.url_core = url_core
+    def __init__(self, mysql_user, mysql_password, mysql_port, final_table_name):
+        self.url_core='https://www.olx.pl'
         self.str_today_date = datetime.today().strftime('%Y-%m-%d')
 
         self.user = mysql_user
