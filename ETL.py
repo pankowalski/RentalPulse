@@ -63,13 +63,13 @@ class ETL:
                         dict_temporary = dict_template
 
                         try:
-                            if_today = ad.find('p', class_ = 'css-p6wsjo-Text eu5v0x0').text
+                            if_today = ad.find('p', class_ = 'css-veheph er34gjf0').text
                         except:
                             continue
 
                         if if_today.find('Dzisiaj') != -1:
 
-                            location_and_datestamp = ad.find('p', class_ = 'css-p6wsjo-Text eu5v0x0').text.strip()
+                            location_and_datestamp = ad.find('p', class_ = 'css-veheph er34gjf0').text.strip()
                             r = re.split(' - ', location_and_datestamp)
                             datestamp = r[1]
                             datestamp = self.str_today_date + ' ' + datestamp[-5:] + ':00'
@@ -88,7 +88,7 @@ class ETL:
                                     dict_temporary['liczba_pokoi'] = '4 and more'
 
                                 try:
-                                    title = ad.find('h6', class_ = 'css-1pvd0aj-Text eu5v0x0').text
+                                    title = ad.find('h6', class_ = 'css-16v5mdi er34gjf0').text
                                     dict_temporary['tytul'] = title
                                 except:
                                     pass
@@ -100,7 +100,7 @@ class ETL:
                                     pass
 
                                 try:
-                                    price = ad.find('p', class_ = 'css-1q7gvpp-Text eu5v0x0').text 
+                                    price = ad.find('p', class_ = 'css-10b0gli er34gjf0').text 
                                     dict_temporary['cena'] = price            
                                 except:
                                     pass
@@ -112,7 +112,7 @@ class ETL:
                                     pass
 
                                 try:
-                                    location_and_datestamp = ad.find('p', class_ = 'css-p6wsjo-Text eu5v0x0').text
+                                    location_and_datestamp = ad.find('p', class_ = 'css-veheph er34gjf0').text
                                     dict_temporary['lokalizacja_i_datestamp'] = location_and_datestamp
                                 except:
                                     pass
@@ -151,7 +151,7 @@ class ETL:
                     soup = BeautifulSoup(content, 'lxml')
 
                     try:
-                        list_details = [element.get_text() for element in soup.find_all('p', class_ = 'css-xl6fe0-Text eu5v0x0')]
+                        list_details = [element.get_text() for element in soup.find_all('p', class_ = 'css-b5m1rv er34gjf0')]
 
                         df.at[i, 'typ_ogloszenia'] = list_details[0]
 
@@ -363,3 +363,5 @@ class ETL:
 
         # Load data to final table
         df.to_sql(name = self.final_table_name, if_exists = 'append', index = False, con = self.mysql_connection)
+
+
