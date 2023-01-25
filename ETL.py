@@ -29,9 +29,10 @@ class ETL:
         self.engine.dispose()
 
     def scrap_main_pages(self, max_main_page=25, delay=4):
-        url_main = self.url_core + '/d/nieruchomosci/mieszkania/wynajem/?search%5Border%5D=created_at%3Adesc'
-        url_filter_rooms = '&search%5Bfilter_enum_rooms%5D%5B0%5D='
-        url_filter_pages = '&page='
+        url_main = self.url_core + '/d/nieruchomosci/mieszkania/wynajem/?'
+        url_filter_rooms = '&search[filter_enum_rooms][0]='
+        url_filter_pages = 'page='
+        url_filter_order = '&search[order]=created_at%3Adesc'
         list_number_of_rooms = ['one', 'two', 'three', 'four']
         list_variables = ['tytul',
                         'url',
@@ -47,13 +48,17 @@ class ETL:
 
         for room in list_number_of_rooms:
             page_number = 1
-            ads_counter = 0
+            ads_counter = 1
             old_ads_counter = 0
             max_main_page = max_main_page
             
             try:
                 while page_number <= max_main_page:
-                    url_to_check = url_main + url_filter_rooms + room + url_filter_pages + str(page_number)
+                    if page_number == 1:
+                        url_to_check = url_main + url_filter_rooms + room + url_filter_order
+                    else:
+                        url_to_check = url_main + url_filter_pages + str(page_number) + url_filter_rooms + room + url_filter_order
+                    
                     result = requests.get(url_to_check)
                     content = result.text
                     soup = BeautifulSoup(content, 'lxml')
