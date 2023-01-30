@@ -11,15 +11,17 @@ from webdriver_manager.chrome import ChromeDriverManager
 from sqlalchemy import create_engine
 
 class ETL:
-    def __init__(self, mysql_user, mysql_password, mysql_port, final_table_name):
+    def __init__(self, mysql_user, mysql_password, mysql_host, mysql_port, mysql_db_name, final_table_name):
         self.url_core='https://www.olx.pl'
         self.str_today_date = datetime.today().strftime('%Y-%m-%d')
 
         self.user = mysql_user
         self.password = mysql_password
-        self.mysql_port = mysql_port
+        self.port = mysql_port
+        self.host = mysql_host
+        self.db_name = mysql_db_name
 
-        self.engine = create_engine(f'mysql+mysqldb://{self.user}:{self.password}@{self.host}:{self.mysql_port}/{self.db_name}')
+        self.engine = create_engine(f'mysql+mysqldb://{self.user}:{self.password}@{self.host}:{self.port}/{self.db_name}')
         self.mysql_connection = self.engine.connect()
         self.final_table_name = final_table_name
     
@@ -140,7 +142,7 @@ class ETL:
             except StopIteration:
                 pass
         
-        return df
+        # return df
 
     def scrap_details_olx(self, df_input, column_name='url'):
         df = df_input
@@ -188,7 +190,7 @@ class ETL:
                 i += 1
                 continue
 
-        return df
+        # return df
     
     def scrap_details_otodom(self, df_input, column_name='url'):
         options = Options()
@@ -250,7 +252,7 @@ class ETL:
                 continue
 
         driver.quit()
-        return df
+        # return df
 
     def transform_data(self, df_input):
         df = df_input
